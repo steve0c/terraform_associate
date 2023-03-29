@@ -114,8 +114,8 @@ resource "aws_nat_gateway" "nat_gateway" {
 }
 
 provider "aws" {
-  access_key = "AKIAW46EYWUYDNSY66UK"
-  secret_key = "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"
+  access_key = "**************"
+  secret_key = "**************8"
   region     = "us-east-1"
 }
 
