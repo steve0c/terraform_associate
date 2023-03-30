@@ -2,17 +2,25 @@
 
 #Retrieve the list of AZs in the current AWS region
 data "aws_availability_zones" "available" {}
+
 data "aws_region" "current" {}
+
 
 #Define the VPC 
 resource "aws_vpc" "vpc" {
   cidr_block = var.vpc_cidr
-
   tags = {
     Name        = var.vpc_name
     Environment = "demo_environment"
     Terraform   = "true"
+    Region      = data.aws_region.current.name
   }
+}
+
+locals {
+  team        = "api_mgmt_dev"
+  application = "corp_api"
+  server_name = "ec2-${var.environment}-api-${var.variables_sub_az}"
 }
 
 #Deploy the private subnets
@@ -114,8 +122,8 @@ resource "aws_nat_gateway" "nat_gateway" {
 }
 
 provider "aws" {
-  access_key = "AKIAW46EYWUYDNSY66UK"
-  secret_key = "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"
+  access_key = ""
+  secret_key = ""
   region     = "us-east-1"
 }
 
@@ -127,8 +135,24 @@ resource "aws_instance" "web" {
   vpc_security_group_ids = ["sg-02870542d4e63088d"]
 
   tags = {
-    "Terraform" = "true"
+    Name  = local.server_name
+    Owner = local.team
+    App   = local.application
   }
 }
+
+resource "aws_subnet" "variables-subnet" {
+  vpc_id            = aws_vpc.vpc.id
+  cidr_block        = var.variables_sub_cidr
+  availability_zone = var.variables_sub_az
+
+  map_public_ip_on_launch = var.variables_sub_auto_ip
+  tags = {
+    Name      = "sub-variables-${var.variables_sub_az}"
+    Terraform = "true"
+  }
+}
+
+
 
 
