@@ -1,26 +1,38 @@
-
+# Configure the AWS Provider
+provider "aws" {
+  region = "us-east-1"
+}
 
 #Retrieve the list of AZs in the current AWS region
 data "aws_availability_zones" "available" {}
-
 data "aws_region" "current" {}
 
+# Terraform Data Block - Lookup Ubuntu 20.04
+data "aws_ami" "ubuntu" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["099720109477"]
+}
 
 #Define the VPC 
 resource "aws_vpc" "vpc" {
   cidr_block = var.vpc_cidr
+
   tags = {
     Name        = var.vpc_name
     Environment = "demo_environment"
     Terraform   = "true"
-    Region      = data.aws_region.current.name
   }
-}
-
-locals {
-  team        = "api_mgmt_dev"
-  application = "corp_api"
-  server_name = "ec2-${var.environment}-api-${var.variables_sub_az}"
 }
 
 #Deploy the private subnets
@@ -121,38 +133,24 @@ resource "aws_nat_gateway" "nat_gateway" {
   }
 }
 
-provider "aws" {
-  access_key = "AKIAW46EYWUYAU6C5I3S"
-  secret_key = "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"
-  region     = "us-east-1"
-}
-
-resource "aws_instance" "web" {
-  ami           = "ami-00c39f71452c08778"
-  instance_type = "t2.micro"
-
-  subnet_id              = "subnet-0082d0ccc9ebdbc02"
-  vpc_security_group_ids = ["sg-02870542d4e63088d"]
-
+# Terraform Resource Block - To Build EC2 instance in Public Subnet
+resource "aws_instance" "web_server" {                            # BLOCK
+  ami           = data.aws_ami.ubuntu.id                          # Argument with data expression
+  instance_type = "t2.micro"                                      # Argument
+  subnet_id     = aws_subnet.public_subnets["public_subnet_1"].id # Argument with value as expression
   tags = {
-    Name  = local.server_name
-    Owner = local.team
-    App   = local.application
+    Name = "Web EC2 Server"
   }
 }
 
 resource "aws_subnet" "variables-subnet" {
-  vpc_id            = aws_vpc.vpc.id
-  cidr_block        = var.variables_sub_cidr
-  availability_zone = var.variables_sub_az
-
+  vpc_id                  = aws_vpc.vpc.id
+  cidr_block              = var.variables_sub_cidr
+  availability_zone       = var.variables_sub_az
   map_public_ip_on_launch = var.variables_sub_auto_ip
+
   tags = {
     Name      = "sub-variables-${var.variables_sub_az}"
     Terraform = "true"
   }
 }
-
-
-
-
